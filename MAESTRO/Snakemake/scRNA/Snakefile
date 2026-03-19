@@ -23,8 +23,10 @@ TARGETS = REPORTS
 rule all:
     input: TARGETS
 
+if config["platform"] in ["10x-genomics", "Dropseq"]:
+    include: "rules/sc_rna_download.smk"
 include: "rules/sc_rna_map.smk"
-if config["rseqc"]:
+if config["rseqc"] and config["platform"] == "Smartseq2":
     include: "rules/sc_rna_rseqc.smk"
 if len(ALL_SAMPLES) > 1:
     include: "rules/sc_rna_merge.smk"

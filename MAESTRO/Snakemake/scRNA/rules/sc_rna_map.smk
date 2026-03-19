@@ -9,21 +9,22 @@ if config["platform"] == "10x-genomics":
         specify --soloFeatures Gene for single-cell  data
         specify --soloFeatures GeneFull for single-nuclei data
         specify --soloFeatures Gene GeneFull for getting both counts in exons level and exon + intron level (velocity)
+
+        BAM output is disabled (--outSAMtype None) to save disk space.
+        FASTQ files are downloaded on-demand and auto-deleted after alignment.
         """
         input:
             mapindex = config["genome"]["mapindex"],
-            whitelist = config["barcode"]["whitelist"]
+            whitelist = config["barcode"]["whitelist"],
+            r1 = "Result/Fastq/{sample}/{sample}_R1.fastq.gz",
+            r2 = "Result/Fastq/{sample}/{sample}_R2.fastq.gz",
         output:
-            bam = "Result/STAR/{sample}/{sample}Aligned.sortedByCoord.out.bam",
-            bai = "Result/STAR/{sample}/{sample}Aligned.sortedByCoord.out.bam.bai",
             rawmtx = "Result/STAR/{sample}/{sample}Solo.out/%s/raw/matrix.mtx" %(config["STARsolo_Features"].split(" ")[0]),
             feature = "Result/STAR/{sample}/{sample}Solo.out/%s/raw/features.tsv" %(config["STARsolo_Features"].split(" ")[0]),
             barcode = "Result/STAR/{sample}/{sample}Solo.out/%s/raw/barcodes.tsv" %(config["STARsolo_Features"].split(" ")[0])
         params:
             star_custom = config["STARsolo_Features"],
             outprefix = "Result/STAR/{sample}/{sample}",
-            transcript = lambda wildcards: ','.join(FILES[wildcards.sample]["R2"]),
-            barcode = lambda wildcards: ','.join(FILES[wildcards.sample]["R1"]),
             barcodestart = config["barcode"]["barcodestart"],
             barcodelength = config["barcode"]["barcodelength"],
             umistart = config["barcode"]["umistart"],
@@ -44,7 +45,7 @@ if config["platform"] == "10x-genomics":
                 --genomeDir {input.mapindex} \
                 --runThreadN {threads} \
                 --outFileNamePrefix {params.outprefix} \
-                --outSAMtype BAM SortedByCoordinate \
+                --outSAMtype None \
                 --outSAMattributes NH HI nM AS CR UR CB UB GX GN sS sQ sM \
                 --soloType CB_UMI_Simple \
                 --soloFeatures {params.star_custom} \
@@ -55,30 +56,25 @@ if config["platform"] == "10x-genomics":
                 --soloUMIlen {params.umilength} \
                 --soloCBmatchWLtype 1MM_multi_pseudocounts \
                 --soloUMIfiltering MultiGeneUMI \
-                --readFilesIn {params.transcript} {params.barcode} \
+                --readFilesIn {input.r2} {input.r1} \
 				--readFilesCommand zcat \
                 --genomeSAindexNbases 2 \
                 > {log} 2>&1
-
-            samtools index -b -@ {threads} {output.bam} >> {log} 2>&1
             """
 
 elif config["platform"] == "Dropseq":
     rule scrna_map:
         input:
             mapindex = config["genome"]["mapindex"],
-            whitelist = config["barcode"]["whitelist"]
+            whitelist = config["barcode"]["whitelist"],
+            r1 = "Result/Fastq/{sample}/{sample}_R1.fastq.gz",
+            r2 = "Result/Fastq/{sample}/{sample}_R2.fastq.gz",
         output:
-            bam = "Result/STAR/{sample}/{sample}Aligned.sortedByCoord.out.bam",
-            bai = "Result/STAR/{sample}/{sample}Aligned.sortedByCoord.out.bam.bai",
             rawmtx = "Result/STAR/{sample}/{sample}Solo.out/Gene/raw/matrix.mtx",
             feature = "Result/STAR/{sample}/{sample}Solo.out/Gene/raw/features.tsv",
             barcode = "Result/STAR/{sample}/{sample}Solo.out/Gene/raw/barcodes.tsv"
         params:
             outprefix = "Result/STAR/{sample}/{sample}",
-            transcript = lambda wildcards: ','.join(FILES[wildcards.sample]["R2"]),
-            barcode = lambda wildcards: ','.join(FILES[wildcards.sample]["R1"]),
-            decompress = getfastq_dropseq(config["fastqdir"], config["fastq"]["barcode"], config["fastq"]["transcript"])["decompress"],
             barcodestart = config["barcode"]["barcodestart"],
             barcodelength = config["barcode"]["barcodelength"],
             umistart = config["barcode"]["umistart"],
@@ -97,7 +93,7 @@ elif config["platform"] == "Dropseq":
                 --genomeDir {input.mapindex} \
                 --runThreadN {threads} \
                 --outFileNamePrefix {params.outprefix} \
-                --outSAMtype BAM SortedByCoordinate \
+                --outSAMtype None \
                 --soloType CB_UMI_Simple \
                 --soloCBwhitelist {input.whitelist} \
                 --soloCBstart {params.barcodestart} \
@@ -106,11 +102,9 @@ elif config["platform"] == "Dropseq":
                 --soloUMIlen {params.umilength} \
                 --soloCBmatchWLtype 1MM_multi_pseudocounts \
                 --soloUMIfiltering MultiGeneUMI \
-                --readFilesIn {params.transcript} {params.barcode} \
-                --readFilesCommand {params.decompress} \
+                --readFilesIn {input.r2} {input.r1} \
+                --readFilesCommand zcat \
                 > {log} 2>&1
-
-            samtools index -b -@ {threads} {output.bam}
             """
 
 elif config["platform"] == "Smartseq2":

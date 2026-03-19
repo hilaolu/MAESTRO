@@ -2,6 +2,14 @@
 
 SAMPLES_JSON: {{ sample_file }}
 
+######## Download parameters ############
+
+# Command to download FASTQ files from remote URLs.
+# The command should accept the pattern: <command> <output_path> <url>
+# Examples: "wget -O", "curl -o", "aws s3 cp" (note: for aws s3 cp, the argument order is reversed, so a wrapper script may be needed)
+# DEFAULT: wget -O
+download_command: {{ download_command }}
+
 ######## STARsolo parameters ############
 
 STARsolo_threads: 12
