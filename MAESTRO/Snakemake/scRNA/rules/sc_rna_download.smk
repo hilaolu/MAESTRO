@@ -1,19 +1,15 @@
 
 import os
 
-def get_fastq_urls(wildcards):
-    """Return the list of remote FASTQ URLs for a sample, from samples.json."""
-    r1_files = FILES[wildcards.sample]["R1"]
-    r2_files = FILES[wildcards.sample]["R2"]
-    return {"R1": r1_files, "R2": r2_files}
+# Resolve download command: handle missing key, None value, or empty string
+_download_cmd = config.get("download_command", None)
+if not _download_cmd:
+    _download_cmd = "wget -O"
 
-def get_local_fastqs(wildcards, read_key):
-    """Map remote URLs to local temp paths under Result/Fastq/{sample}/."""
-    urls = FILES[wildcards.sample][read_key]
-    return [temp("Result/Fastq/{sample}/{basename}".format(
-        sample=wildcards.sample,
-        basename=os.path.basename(url)
-    )) for url in urls]
+
+def _write_url_list(urls):
+    """Encode a list of URLs into a newline-separated string, safe for bash iteration."""
+    return '\n'.join(urls)
 
 
 if config["platform"] == "10x-genomics":
@@ -23,9 +19,9 @@ if config["platform"] == "10x-genomics":
             r1 = temp("Result/Fastq/{sample}/{sample}_R1.fastq.gz"),
             r2 = temp("Result/Fastq/{sample}/{sample}_R2.fastq.gz"),
         params:
-            r1_urls = lambda wildcards: ' '.join(FILES[wildcards.sample]["R1"]),
-            r2_urls = lambda wildcards: ' '.join(FILES[wildcards.sample]["R2"]),
-            download_cmd = config.get("download_command", "wget -O"),
+            r1_urls = lambda wildcards: _write_url_list(FILES[wildcards.sample]["R1"]),
+            r2_urls = lambda wildcards: _write_url_list(FILES[wildcards.sample]["R2"]),
+            download_cmd = _download_cmd,
         log:
             "Result/Log/{sample}_download.log"
         benchmark:
@@ -34,6 +30,7 @@ if config["platform"] == "10x-genomics":
             """
             # Download R1 files and concatenate
             first=true
+            IFS=$'\\n'
             for url in {params.r1_urls}; do
                 if [ "$first" = true ]; then
                     {params.download_cmd} {output.r1} "$url" >> {log} 2>&1
@@ -57,6 +54,7 @@ if config["platform"] == "10x-genomics":
                     rm -f {output.r2}.part
                 fi
             done
+            unset IFS
             """
 
 elif config["platform"] == "Dropseq":
@@ -66,9 +64,9 @@ elif config["platform"] == "Dropseq":
             r1 = temp("Result/Fastq/{sample}/{sample}_R1.fastq.gz"),
             r2 = temp("Result/Fastq/{sample}/{sample}_R2.fastq.gz"),
         params:
-            r1_urls = lambda wildcards: ' '.join(FILES[wildcards.sample]["R1"]),
-            r2_urls = lambda wildcards: ' '.join(FILES[wildcards.sample]["R2"]),
-            download_cmd = config.get("download_command", "wget -O"),
+            r1_urls = lambda wildcards: _write_url_list(FILES[wildcards.sample]["R1"]),
+            r2_urls = lambda wildcards: _write_url_list(FILES[wildcards.sample]["R2"]),
+            download_cmd = _download_cmd,
         log:
             "Result/Log/{sample}_download.log"
         benchmark:
@@ -77,6 +75,7 @@ elif config["platform"] == "Dropseq":
             """
             # Download R1 files and concatenate
             first=true
+            IFS=$'\\n'
             for url in {params.r1_urls}; do
                 if [ "$first" = true ]; then
                     {params.download_cmd} {output.r1} "$url" >> {log} 2>&1
@@ -100,4 +99,5 @@ elif config["platform"] == "Dropseq":
                     rm -f {output.r2}.part
                 fi
             done
+            unset IFS
             """
