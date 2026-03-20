@@ -1,5 +1,5 @@
 
-if config["rseqc"]:
+if config["rseqc"] and config["platform"] == "Smartseq2":
     rule scrna_report:
         input:
             clusterplot = "Result/Analysis/{sample}/{sample}_cluster.png",
