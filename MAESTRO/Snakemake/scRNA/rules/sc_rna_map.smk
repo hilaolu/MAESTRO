@@ -46,7 +46,6 @@ if config["platform"] == "10x-genomics":
                 --runThreadN {threads} \
                 --outFileNamePrefix {params.outprefix} \
                 --outSAMtype None \
-                --outSAMattributes NH HI nM AS CR UR CB UB GX GN sS sQ sM \
                 --soloType CB_UMI_Simple \
                 --soloFeatures {params.star_custom} \
                 --soloCBwhitelist {input.whitelist} \
