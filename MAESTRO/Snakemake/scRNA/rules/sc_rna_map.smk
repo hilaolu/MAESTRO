@@ -16,8 +16,8 @@ if config["platform"] == "10x-genomics":
         input:
             mapindex = config["genome"]["mapindex"],
             whitelist = config["barcode"]["whitelist"],
-            r1 = "Result/Fastq/{sample}/{sample}_R1.fastq.gz",
-            r2 = "Result/Fastq/{sample}/{sample}_R2.fastq.gz",
+            r1 = lambda wildcards: _local_fastqs(wildcards.sample, "R1"),
+            r2 = lambda wildcards: _local_fastqs(wildcards.sample, "R2"),
         output:
             rawmtx = "Result/STAR/{sample}/{sample}Solo.out/%s/raw/matrix.mtx" %(config["STARsolo_Features"].split(" ")[0]),
             feature = "Result/STAR/{sample}/{sample}Solo.out/%s/raw/features.tsv" %(config["STARsolo_Features"].split(" ")[0]),
@@ -25,6 +25,8 @@ if config["platform"] == "10x-genomics":
         params:
             star_custom = config["STARsolo_Features"],
             outprefix = "Result/STAR/{sample}/{sample}",
+            transcript = lambda wildcards, input: ','.join(input.r2),
+            barcode_reads = lambda wildcards, input: ','.join(input.r1),
             barcodestart = config["barcode"]["barcodestart"],
             barcodelength = config["barcode"]["barcodelength"],
             umistart = config["barcode"]["umistart"],
@@ -55,7 +57,7 @@ if config["platform"] == "10x-genomics":
                 --soloUMIlen {params.umilength} \
                 --soloCBmatchWLtype 1MM_multi_pseudocounts \
                 --soloUMIfiltering MultiGeneUMI \
-                --readFilesIn {input.r2} {input.r1} \
+                --readFilesIn {params.transcript} {params.barcode_reads} \
 				--readFilesCommand zcat \
                 --genomeSAindexNbases 2 \
                 > {log} 2>&1
@@ -66,14 +68,16 @@ elif config["platform"] == "Dropseq":
         input:
             mapindex = config["genome"]["mapindex"],
             whitelist = config["barcode"]["whitelist"],
-            r1 = "Result/Fastq/{sample}/{sample}_R1.fastq.gz",
-            r2 = "Result/Fastq/{sample}/{sample}_R2.fastq.gz",
+            r1 = lambda wildcards: _local_fastqs(wildcards.sample, "R1"),
+            r2 = lambda wildcards: _local_fastqs(wildcards.sample, "R2"),
         output:
             rawmtx = "Result/STAR/{sample}/{sample}Solo.out/Gene/raw/matrix.mtx",
             feature = "Result/STAR/{sample}/{sample}Solo.out/Gene/raw/features.tsv",
             barcode = "Result/STAR/{sample}/{sample}Solo.out/Gene/raw/barcodes.tsv"
         params:
             outprefix = "Result/STAR/{sample}/{sample}",
+            transcript = lambda wildcards, input: ','.join(input.r2),
+            barcode_reads = lambda wildcards, input: ','.join(input.r1),
             barcodestart = config["barcode"]["barcodestart"],
             barcodelength = config["barcode"]["barcodelength"],
             umistart = config["barcode"]["umistart"],
@@ -101,7 +105,7 @@ elif config["platform"] == "Dropseq":
                 --soloUMIlen {params.umilength} \
                 --soloCBmatchWLtype 1MM_multi_pseudocounts \
                 --soloUMIfiltering MultiGeneUMI \
-                --readFilesIn {input.r2} {input.r1} \
+                --readFilesIn {params.transcript} {params.barcode_reads} \
                 --readFilesCommand zcat \
                 > {log} 2>&1
             """
